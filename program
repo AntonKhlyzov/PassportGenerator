@@ -1,0 +1,234 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+#include <time.h>
+
+#define TRUE 1
+#define FALSE 0
+#define ERR_NO_NUM -1
+#define ERR_NO_MEM -2
+
+#define MAX_NUMBER_OF_PASSPORTS 10//can set the number of passwords to as many as needed
+#define ID_SIZE 10000000//can set the size of ID to whatever I want
+
+typedef int BOOLEAN;
+
+typedef struct node //node structure
+{
+    int id;
+    struct node* next;
+    struct node* previous;
+    void* data;
+}LinkedList;
+typedef struct node Node;
+typedef struct passport_struct //passport structure
+{
+    char first_name[20];
+    char last_name[20];
+    long id;
+    int age;
+} Passport;
+
+
+void passport_print(const Passport* pass) //function that prints the passports at the end
+{
+    if (pass->age >= 16) {
+        printf("Success. Application ID %ld.\n Passport application has been processed for %s %s. Age: %d.\n", pass->id,
+               pass->first_name, pass->last_name, pass->age);
+        printf("--------------------------------------------------------------------------------------------------------------\n");
+    }
+    else {
+        printf("Rejected. Application ID %ld.\n Applicant %s %s. Age: %d. You must be at least 16 to apply for passport.\n",
+               pass->id, pass->first_name, pass->last_name, pass->age);
+        printf("--------------------------------------------------------------------------------------------------------------\n");
+    }
+}
+int myRandom (int size) //function that generates a unique random number for my IDs ***I borrowed it from the internet***
+{
+    int i, n;
+    static int numNums = 0;
+    static int *numArr = NULL;
+    // Initialize with a specific size.
+    if (size >= 0) {
+        if (numArr != NULL)
+            free (numArr);
+        if ((numArr = malloc (sizeof(int) * size)) == NULL)
+            return ERR_NO_MEM;
+        for (i = 0; i  < size; i++)
+            numArr[i] = i;
+        numNums = size;
+    }
+    // Error if no numbers left in pool.
+    if (numNums == 0)
+        return ERR_NO_NUM;
+    // Get random number from pool and remove it (rnd in this
+    //   case returns a number between 0 and numNums-1 inclusive).
+    n = rand() % numNums;
+    i = numArr[n];
+    numArr[n] = numArr[numNums-1];
+    numNums--;
+    if (numNums == 0) {
+        free (numArr);
+        numArr = 0;
+    }
+    return i;
+}
+
+void construct_passport(Passport* p, const int id, const char* first_name, const char* last_name, const int age)//construct passport function
+{
+    if (!p) return;
+    p->id = myRandom(ID_SIZE);
+    strcpy(p->first_name,first_name);
+    strcpy(p->last_name,last_name);
+    p->age = age;
+}
+void construct_node(Node* n, const int id, const void* data)//construct node function
+{
+    if (!n) return;
+    n->id = id;
+    n->data = data;
+}
+void link_nodes(Node* next, Node* current, Node* previous) //links nodes together
+{
+    if (current){
+        current->next = next;
+        current->previous = previous;
+    }
+    if (previous) previous->next = current;
+    if (next) next->previous = current;
+}
+void passport_error(const char* msg)// error function
+{
+    printf(msg);
+    printf("\n");
+    exit(1);
+}
+void clear_std_in_buffer() //buffer clear
+{
+    while (getchar() != '\n');
+}
+BOOLEAN check_name(char* name, int size) //checks name for anything illegal
+{
+    if (NULL == name) return FALSE;
+    if ((size<2)||(size>30)) return FALSE;
+    int count = 0;
+    for (int i = 0; i < size; i++)
+    {
+        if ( name[i] == ' ' ) {count++; continue;}
+        if ( name[i] == '`' ) {count++; continue;}
+        if ( name[i] == '-' ) {count++; continue;}
+        if ( !isalpha(name[i])  ) return FALSE;
+    }
+    if (count > 1) return FALSE;
+    return TRUE;
+}
+const char* create_first_name()//function that gets first name from applicant
+{
+    char buffer[4096] = {0};
+    printf("-----------------------------Passport--Application-------------------------------\n");
+    printf("Please enter your first name: ");
+    if ( scanf("%4095[^\n]", buffer) != 1)
+        passport_error("Sorry! bad input for first name");
+    clear_std_in_buffer();
+
+    char* fname = (char *) calloc(strlen(buffer), sizeof(char));
+    if (fname == NULL)
+        passport_error("Sorry! cannot allocate memory for first name");
+    strcpy(fname, buffer);
+    if(!check_name(fname, strlen(fname)))
+    {
+        printf("Bad input. PLease try again. \n");
+        return create_first_name();
+    }
+    else return fname;
+}
+const char* create_last_name()//function that gets last name form applicant
+{
+    char buffer[4096] = {0};
+    printf("Please enter your last name: ");
+    if ( scanf("%4095[^\n]", buffer) != 1)
+        passport_error("Sorry! bad input for last name");
+    clear_std_in_buffer();
+
+    char* lname = (char*) calloc(strlen(buffer), sizeof(char));
+    if (lname == NULL)
+        passport_error("Sorry! I cannot allocate memory for last name");
+    strcpy(lname, buffer);
+    if(!check_name(lname, strlen(lname)))
+    {
+        printf("Bad input. PLease try again. \n");
+        return create_last_name();
+    }
+    else return lname;
+}
+int getYob()//function to obtain user input - YOB
+{
+    int num;
+    char *p, s[100];
+    while (fgets(s, sizeof(s), stdin))
+    {
+        num = strtol(s, &p, 10);
+        if (p == s || *p != '\n') {
+            printf("Please enter an integer: ");
+        } else break;
+    }
+    return num;
+}
+int getAgeFromApplicant()//function that asks applicant for YOB and returns age
+{
+    int array[3];
+    printf("Please enter date of birth (YYYY/MM/DD): \n");
+   printf("Year: ");
+   array[0]=getYob();
+    printf("Month: ");
+    array[1]=getYob();
+    printf("Day: ");
+    array[2]=getYob();
+
+    if((array[0]>1900 && array[0]<2020)&&(array[1]>0&&array[1]<13)&&(array[2]>0 && array[2]<32)) {
+        char buff[100];
+        sprintf(buff, "%d%02d%02d", array[0], array[1], array[2]);//join DOB input into one number
+        int dob = atoi(buff);//converts DOB sting to DOB integer
+        //obtain current date
+        time_t t;
+        struct tm *info;
+        static char date_str[12];
+        time(&t);
+        info = localtime(&t);
+        strftime(date_str, 12, "%Y%m%d", info);//get current date in the same format as DOB
+        int now = atoi(date_str);//convert current date to one number
+        int age = (now - dob) / 10000;//calculate age
+        return age;
+    }
+    else
+    {
+        printf("Please enter a valid date of birth.\n");
+        return getAgeFromApplicant();
+    }
+}
+int main()
+{
+    Passport p[MAX_NUMBER_OF_PASSPORTS];//create predefined number of passports
+    Node n[MAX_NUMBER_OF_PASSPORTS];//create nodes for each passport
+    Node *head = NULL;// empty head node
+    Node *current_node = NULL;//empty current node
+    LinkedList* list;//not sure why i need this or if i need this at all
+for (int id=0;id<MAX_NUMBER_OF_PASSPORTS;id++)//loop that creates the nodes and passports
+{
+    construct_passport(&p[id], id, create_first_name(), create_last_name(), getAgeFromApplicant());//create each passport
+    construct_node(&n[id], id, &p[id]);//put passport into node
+    head = &n[0];//head node is set to the first node
+    current_node = &n[id];//current node is set to the node being iterated
+    list = &n[id];//not sure what this is or if i need it
+    //link all nodes in the loop together
+    if (id == 0) link_nodes(NULL, &n[id], &n[id + 1]);
+    if (id > 0 && id < (MAX_NUMBER_OF_PASSPORTS - 1)) link_nodes(&n[id - 1], &n[id], &n[id + 1]);
+    if (id == (MAX_NUMBER_OF_PASSPORTS - 1)) link_nodes(&n[id - 1], &n[id], NULL);
+}
+//go through all nodes and print them
+    for (current_node = head; current_node != NULL; current_node = current_node->previous)
+       passport_print((Passport *) current_node->data);
+    
+    return 0;
+}
